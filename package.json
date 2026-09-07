@@ -1,0 +1,38 @@
+{
+  "name": "music-news",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Global music news aggregator — sorted by country, genre and source",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "seed": "tsx prisma/seed.ts",
+    "export:catalog": "tsx src/ingest/export-catalog.ts",
+    "import:catalog": "tsx src/ingest/import-catalog.ts",
+    "ingest": "tsx src/ingest/run.ts",
+    "ingest:watch": "tsx src/ingest/watch.ts",
+    "cleanup": "tsx src/ingest/cleanup.ts",
+    "prune": "tsx src/ingest/prune.ts",
+    "reclassify": "tsx src/ingest/reclassify.ts",
+    "import:artists": "tsx src/ingest/import-artists.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.2.1",
+    "next": "^15.1.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "rss-parser": "^3.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.0.4",
+    "@types/react-dom": "^19.0.2",
+    "prisma": "^6.2.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

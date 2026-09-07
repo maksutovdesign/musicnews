@@ -1,0 +1,8 @@
+PassengerNodejs /home/m/maksutic/maksutovdesign.ru/.local/bin/node
+PassengerAppRoot /home/m/maksutic/maksutovdesign.ru/musicnews
+PassengerAppType node
+PassengerStartupFile server.js
+PassengerBaseURI /musicnews
+SetEnv NODE_ENV production
+SetEnv NEXT_PUBLIC_BASE_PATH /musicnews
+SetEnv DATABASE_URL file:./dev.db

@@ -1,0 +1,119 @@
+// Music news aggregator schema.
+// Provider is SQLite for zero-setup local dev. To move to Postgres:
+//   1. change provider to "postgresql"
+//   2. point DATABASE_URL at your Postgres instance
+//   3. run `prisma db push`
+// The model is provider-agnostic; no SQLite-only features are used.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// A news source: an RSS feed or an API endpoint.
+model Source {
+  id        String    @id @default(cuid())
+  name      String
+  type      String // "rss" | "youtube" | "spotify" | "newsapi"
+  url       String    @unique
+  category  String    @default("news") // "news" | "release"
+  region    String? // ISO country code the outlet is based in (editorial region)
+  language  String? // ISO 639-1 of the outlet
+  enabled   Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  articles  Article[]
+}
+
+// A single news item.
+model Article {
+  id          String   @id @default(cuid())
+  title       String
+  url         String   @unique
+  summary     String?
+  content     String?
+  imageUrl    String?
+  language    String? // ISO 639-1 detected/declared language of the article
+  publishedAt DateTime
+  fetchedAt   DateTime @default(now())
+
+  // Deduplication key: hash of normalized title + normalized url.
+  dedupeKey String @unique
+
+  sourceId String
+  source   Source @relation(fields: [sourceId], references: [id])
+
+  artists ArticleArtist[]
+  genres  ArticleGenre[]
+
+  @@index([publishedAt])
+}
+
+// A musician or band, resolved against MusicBrainz where possible.
+model Artist {
+  id       String  @id @default(cuid())
+  mbid     String? @unique // MusicBrainz ID once resolved
+  name     String
+  sortName String?
+  country  String? // ISO country code from MusicBrainz "area"
+  aliases  String? // JSON array of alternate spellings (stored as text for SQLite)
+
+  articles     ArticleArtist[]
+  artistGenres ArtistGenre[]
+
+  @@index([name])
+  @@index([sortName])
+  @@index([country])
+}
+
+// Genre hierarchy: parentId links a subgenre to its parent (e.g. techno -> electronic).
+model Genre {
+  id       String  @id @default(cuid())
+  name     String  @unique
+  slug     String  @unique
+  parentId String?
+  parent   Genre?  @relation("GenreTree", fields: [parentId], references: [id])
+  children Genre[] @relation("GenreTree")
+
+  articles     ArticleGenre[]
+  artistGenres ArtistGenre[]
+}
+
+// Article <-> Artist link with how confident the extraction/resolution was.
+model ArticleArtist {
+  articleId  String
+  artistId   String
+  confidence Float   @default(0.5) // 0..1
+  article    Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  artist     Artist  @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, artistId])
+  @@index([artistId])
+}
+
+// Article <-> Genre link (denormalized from the article's artists for fast filtering).
+model ArticleGenre {
+  articleId  String
+  genreId    String
+  confidence Float   @default(0.5)
+  article    Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  genre      Genre   @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, genreId])
+  @@index([genreId])
+}
+
+// Artist <-> Genre link (from MusicBrainz tags / rules).
+model ArtistGenre {
+  artistId   String
+  genreId    String
+  confidence Float   @default(0.5)
+  artist     Artist  @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  genre      Genre   @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([artistId, genreId])
+  @@index([genreId])
+}
