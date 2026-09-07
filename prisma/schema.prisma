@@ -16,16 +16,25 @@ datasource db {
 
 // A news source: an RSS feed or an API endpoint.
 model Source {
-  id        String    @id @default(cuid())
-  name      String
-  type      String // "rss" | "youtube" | "spotify" | "newsapi"
-  url       String    @unique
-  category  String    @default("news") // "news" | "release"
-  region    String? // ISO country code the outlet is based in (editorial region)
-  language  String? // ISO 639-1 of the outlet
-  enabled   Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  articles  Article[]
+  id            String    @id @default(cuid())
+  name          String
+  type          String // "rss" | "discogs"
+  url           String    @unique
+  category      String    @default("news") // "news" | "release"
+  quality       String    @default("editorial") // "editorial" | "google" | "marketplace" | "api"
+  region        String? // ISO country code the outlet is based in (editorial region)
+  language      String? // ISO 639-1 of the outlet
+  enabled       Boolean   @default(true)
+  errorCount    Int       @default(0)
+  lastError     String?
+  lastFetchedAt DateTime?
+  lastNewItems  Int       @default(0)
+  createdAt     DateTime  @default(now())
+  articles      Article[]
+
+  @@index([category])
+  @@index([quality])
+  @@index([enabled])
 }
 
 // A single news item.
@@ -40,6 +49,13 @@ model Article {
   publishedAt DateTime
   fetchedAt   DateTime @default(now())
 
+  // Physical release metadata, filled when a release feed/API provides it.
+  releaseFormat        String?
+  releaseCountry       String?
+  releaseLabel         String?
+  releaseCatalogNumber String?
+  releaseYear          Int?
+
   // Deduplication key: hash of normalized title + normalized url.
   dedupeKey String @unique
 
@@ -50,6 +66,9 @@ model Article {
   genres  ArticleGenre[]
 
   @@index([publishedAt])
+  @@index([releaseFormat])
+  @@index([releaseCountry])
+  @@index([releaseYear])
 }
 
 // A musician or band, resolved against MusicBrainz where possible.

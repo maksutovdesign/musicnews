@@ -22,6 +22,16 @@ export interface ParsedItem {
   imageUrl: string | null;
   publishedAt: Date;
   dedupeKey: string;
+  releaseFormat?: string | null;
+  releaseCountry?: string | null;
+  releaseLabel?: string | null;
+  releaseCatalogNumber?: string | null;
+  releaseYear?: number | null;
+}
+
+export interface FetchResult {
+  items: ParsedItem[];
+  error: string | null;
 }
 
 // Strip HTML tags and collapse whitespace for clean summaries.
@@ -115,14 +125,14 @@ function firstValue(
     : null;
 }
 
-/** Fetch and normalize one RSS feed. Returns [] on failure (never throws). */
-export async function fetchFeed(url: string): Promise<ParsedItem[]> {
+/** Fetch and normalize one RSS feed. Never throws; errors are returned for source health. */
+export async function fetchFeedResult(url: string): Promise<FetchResult> {
   let feed;
   try {
     feed = await parser.parseURL(url);
   } catch (err) {
     console.warn(`  ! feed failed: ${url} — ${(err as Error).message}`);
-    return [];
+    return { items: [], error: (err as Error).message };
   }
 
   const items: ParsedItem[] = [];
@@ -143,5 +153,11 @@ export async function fetchFeed(url: string): Promise<ParsedItem[]> {
       dedupeKey: makeDedupeKey(title, link),
     });
   }
-  return items;
+  return { items, error: null };
+}
+
+/** Backward-compatible helper for scripts/tests that only need items. */
+export async function fetchFeed(url: string): Promise<ParsedItem[]> {
+  const result = await fetchFeedResult(url);
+  return result.items;
 }

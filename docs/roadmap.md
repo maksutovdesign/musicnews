@@ -1,36 +1,26 @@
 # MusicNews Roadmap
 
+## Completed in v0.2
+
+- Source quality tiers are stored in the database and available as UI filters.
+- Source health fields now track last fetch, last error, new items, and repeated failures.
+- RSS/API sources with repeated 403/404/timeout-style errors auto-disable after five failures.
+- Release cards now support format, country, label, year, and catalog number metadata.
+- Artist cards now open internal artist pages with linked news and releases.
+- News, release, and artist feeds have pagination for larger datasets.
+- `/admin/sources` shows source status, quality, errors, and item counts.
+- SQLite backup script added for Beget while Postgres migration remains pending.
+
 ## Highest Impact
 
-1. Add source quality tiers in the UI.
-   - `editorial`: curated music publications.
-   - `google`: broad country news search.
-   - `marketplace`: Discogs/Bandcamp/store release feeds.
-   - This will let users switch between clean editorial news and full global coverage.
-
-2. Add a review queue for noisy Google News items.
+1. Add a review queue for noisy Google News items.
    - Mark false positives.
    - Store blocked domains/keywords.
    - Improve filters over time without deleting good sources.
 
-3. Add source health monitoring.
-   - Last successful fetch.
-   - Last error.
-   - Number of new items in last run.
-   - Auto-pause feeds with repeated 403/404/timeouts.
+2. Hide releases without artwork behind an optional toggle.
 
-4. Add richer release formatting.
-   - Format badges: Vinyl, CD, Cassette.
-   - Country/market badge from Discogs.
-   - Label, catalog number, year, genre/style.
-   - Hide releases without artwork behind an optional toggle.
-
-5. Add artist pages inside the app.
-   - Artist profile.
-   - Related news.
-   - Related releases.
-   - Country and genre metadata.
-   - External links to MusicBrainz and Discogs.
+3. Add Discogs artist links to internal artist pages.
 
 ## Data Quality
 
@@ -69,4 +59,3 @@
 18. Add GitHub Actions for build/test checks.
 19. Add release workflow with tags and GitHub Releases.
 20. Store secrets through hosting environment settings instead of editing `.env` by SSH.
-

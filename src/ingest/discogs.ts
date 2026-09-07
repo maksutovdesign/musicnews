@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { ParsedItem } from "./rss";
+import type { FetchResult, ParsedItem } from "./rss";
 
 interface DiscogsSearchResult {
   title?: string;
@@ -47,6 +47,20 @@ function summaryFor(result: DiscogsSearchResult) {
     .join(" · ");
 }
 
+function releaseFormat(result: DiscogsSearchResult) {
+  if (!result.format?.length) return null;
+  const normalized = result.format.map((item) => item.toLowerCase());
+  if (normalized.some((item) => item.includes("cassette"))) return "Cassette";
+  if (normalized.some((item) => item === "cd" || item.includes("cdr"))) return "CD";
+  if (normalized.some((item) => item.includes("vinyl"))) return "Vinyl";
+  return result.format[0] ?? null;
+}
+
+function releaseYear(result: DiscogsSearchResult) {
+  const parsed = Number(result.year);
+  return Number.isInteger(parsed) && parsed > 1900 ? parsed : null;
+}
+
 function releaseUrl(result: DiscogsSearchResult) {
   if (result.uri) {
     try {
@@ -64,11 +78,11 @@ function imageUrl(result: DiscogsSearchResult) {
   return image;
 }
 
-export async function fetchDiscogsReleases(url: string): Promise<ParsedItem[]> {
+export async function fetchDiscogsReleaseResult(url: string): Promise<FetchResult> {
   const token = process.env.DISCOGS_TOKEN ?? process.env.DISCOGS_USER_TOKEN;
   if (!token) {
     console.warn("  ! Discogs skipped: set DISCOGS_TOKEN to enable this source.");
-    return [];
+    return { items: [], error: "Missing DISCOGS_TOKEN" };
   }
 
   let res: Response;
@@ -83,17 +97,17 @@ export async function fetchDiscogsReleases(url: string): Promise<ParsedItem[]> {
     });
   } catch (err) {
     console.warn(`  ! Discogs failed: ${(err as Error).message}`);
-    return [];
+    return { items: [], error: (err as Error).message };
   }
 
   if (!res.ok) {
     console.warn(`  ! Discogs failed: ${res.status} ${res.statusText}`);
-    return [];
+    return { items: [], error: `${res.status} ${res.statusText}` };
   }
 
   const data = (await res.json()) as DiscogsSearchResponse;
-  return (data.results ?? [])
-    .map((result) => {
+  const items = (data.results ?? [])
+    .map((result): ParsedItem | null => {
       const title = result.title?.trim();
       const url = releaseUrl(result);
       if (!title || !url) return null;
@@ -107,7 +121,19 @@ export async function fetchDiscogsReleases(url: string): Promise<ParsedItem[]> {
         imageUrl: imageUrl(result),
         publishedAt: publishedAt(result.year),
         dedupeKey: makeDedupeKey(title, url),
+        releaseFormat: releaseFormat(result),
+        releaseCountry: result.country ?? null,
+        releaseLabel: result.label?.[0] ?? null,
+        releaseCatalogNumber: result.catno ?? null,
+        releaseYear: releaseYear(result),
       } satisfies ParsedItem;
     })
     .filter((item): item is ParsedItem => Boolean(item));
+
+  return { items, error: null };
+}
+
+export async function fetchDiscogsReleases(url: string): Promise<ParsedItem[]> {
+  const result = await fetchDiscogsReleaseResult(url);
+  return result.items;
 }

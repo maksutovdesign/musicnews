@@ -11,6 +11,12 @@ export interface FeedArticle {
   imageUrl: string | null;
   publishedAt: string;
   sourceName: string;
+  sourceQuality?: string;
+  releaseFormat?: string | null;
+  releaseCountry?: string | null;
+  releaseLabel?: string | null;
+  releaseCatalogNumber?: string | null;
+  releaseYear?: number | null;
   countries: { code: string; label: string; flag: string }[];
   artists: string[];
   genres: string[];
@@ -30,6 +36,29 @@ function formatDate(value: string) {
 
 function articleParagraph(article: FeedArticle) {
   return article.content ?? article.summary ?? "Краткое описание пока не загружено.";
+}
+
+function qualityLabel(value: string | undefined) {
+  switch (value) {
+    case "google":
+      return "Google News";
+    case "marketplace":
+      return "Marketplace";
+    case "api":
+      return "API";
+    default:
+      return "Editorial";
+  }
+}
+
+function releaseTags(article: FeedArticle) {
+  return [
+    article.releaseFormat,
+    article.releaseCountry,
+    article.releaseLabel,
+    article.releaseYear ? String(article.releaseYear) : null,
+    article.releaseCatalogNumber,
+  ].filter((value): value is string => Boolean(value));
 }
 
 export function ArticleFeed({ articles }: ArticleFeedProps) {
@@ -66,8 +95,12 @@ export function ArticleFeed({ articles }: ArticleFeedProps) {
             {article.summary && <p className="summary">{article.summary}</p>}
             <div className="meta">
               <span className="tag">{article.sourceName}</span>
+              {article.sourceQuality && <span className="tag">{qualityLabel(article.sourceQuality)}</span>}
               <span className="dot">·</span>
               <time dateTime={article.publishedAt}>{formatDate(article.publishedAt)}</time>
+              {releaseTags(article).map((tag) => (
+                <span key={tag} className="tag release-tag">{tag}</span>
+              ))}
               {article.countries.map((country) => (
                 <span key={country.code} className="tag country">
                   {country.flag} {country.label}
@@ -96,6 +129,7 @@ export function ArticleFeed({ articles }: ArticleFeedProps) {
             <div className="modal-top">
               <div className="modal-meta">
                 <span className="tag">{selected.sourceName}</span>
+                {selected.sourceQuality && <span className="tag">{qualityLabel(selected.sourceQuality)}</span>}
                 <time dateTime={selected.publishedAt}>{formatDate(selected.publishedAt)}</time>
               </div>
               <button className="close-button" type="button" onClick={() => setSelected(null)} aria-label="Закрыть">
@@ -122,6 +156,9 @@ export function ArticleFeed({ articles }: ArticleFeedProps) {
               ))}
               {selected.genres.map((genre) => (
                 <span key={genre} className="tag">{genre}</span>
+              ))}
+              {releaseTags(selected).map((tag) => (
+                <span key={tag} className="tag release-tag">{tag}</span>
               ))}
             </div>
 

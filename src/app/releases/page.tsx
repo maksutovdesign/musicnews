@@ -5,6 +5,13 @@ import { ArticleFeed, type FeedArticle } from "../article-feed";
 import type { Prisma } from "@prisma/client";
 
 const MIN_CONFIDENCE = 0.6;
+const PAGE_SIZE = 80;
+const SOURCE_QUALITIES = [
+  { slug: "editorial", label: "Editorial" },
+  { slug: "google", label: "Google News" },
+  { slug: "marketplace", label: "Marketplaces" },
+  { slug: "api", label: "APIs" },
+];
 
 export const dynamic = "force-dynamic";
 
@@ -17,8 +24,10 @@ const FORMATS = [
 type SearchParams = Promise<{
   format?: string;
   source?: string;
+  quality?: string;
   q?: string;
   sort?: string;
+  page?: string;
 }>;
 
 function buildQuery(base: Record<string, string | undefined>) {
@@ -36,19 +45,25 @@ export default async function ReleasesPage({
   const sp = await searchParams;
   const q = sp.q?.trim();
   const source = sp.source;
+  const quality = SOURCE_QUALITIES.find((item) => item.slug === sp.quality)?.slug;
   const format = FORMATS.find((item) => item.slug === sp.format);
   const sort = sp.sort === "oldest" ? "oldest" : "newest";
+  const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
 
   const and: Prisma.ArticleWhereInput[] = [{ source: { category: "release" } }];
   if (source) and.push({ sourceId: source });
+  if (quality) and.push({ source: { quality } });
   if (q) and.push({ OR: [{ title: { contains: q } }, { summary: { contains: q } }] });
   if (format) {
     and.push({
-      OR: format.keywords.flatMap((keyword) => [
-        { title: { contains: keyword } },
-        { summary: { contains: keyword } },
-        { content: { contains: keyword } },
-      ]),
+      OR: [
+        { releaseFormat: format.label },
+        ...format.keywords.flatMap((keyword) => [
+          { title: { contains: keyword } },
+          { summary: { contains: keyword } },
+          { content: { contains: keyword } },
+        ]),
+      ],
     });
   }
 
@@ -57,7 +72,8 @@ export default async function ReleasesPage({
     prisma.article.findMany({
       where,
       orderBy: { publishedAt: sort === "oldest" ? "asc" : "desc" },
-      take: 80,
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
       include: {
         source: true,
         genres: { where: { confidence: { gte: MIN_CONFIDENCE } }, include: { genre: true } },
@@ -82,6 +98,12 @@ export default async function ReleasesPage({
       imageUrl: article.imageUrl,
       publishedAt: article.publishedAt.toISOString(),
       sourceName: article.source.name,
+      sourceQuality: article.source.quality,
+      releaseFormat: article.releaseFormat,
+      releaseCountry: article.releaseCountry,
+      releaseLabel: article.releaseLabel,
+      releaseCatalogNumber: article.releaseCatalogNumber,
+      releaseYear: article.releaseYear,
       countries: artistCountries.map((code) => ({
         code,
         label: countryName(code),
@@ -92,8 +114,10 @@ export default async function ReleasesPage({
     };
   });
 
-  const hasFilter = Boolean(format || source || q);
+  const hasFilter = Boolean(format || source || quality || q);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const activeSource = sources.find((item) => item.id === source);
+  const activeQuality = SOURCE_QUALITIES.find((item) => item.slug === quality);
 
   return (
     <div className="layout">
@@ -106,7 +130,7 @@ export default async function ReleasesPage({
             <a
               key={item.slug}
               className={`chip ${format?.slug === item.slug ? "active" : ""}`}
-              href={buildQuery({ source, q, sort, format: format?.slug === item.slug ? undefined : item.slug })}
+              href={buildQuery({ source, quality, q, sort, format: format?.slug === item.slug ? undefined : item.slug })}
             >
               {item.label}
             </a>
@@ -119,9 +143,22 @@ export default async function ReleasesPage({
             <a
               key={item.id}
               className={`chip ${source === item.id ? "active" : ""}`}
-              href={buildQuery({ format: format?.slug, q, sort, source: source === item.id ? undefined : item.id })}
+              href={buildQuery({ format: format?.slug, quality, q, sort, source: source === item.id ? undefined : item.id })}
             >
               {item.name}
+            </a>
+          ))}
+        </div>
+
+        <h3>Source type</h3>
+        <div className="chips">
+          {SOURCE_QUALITIES.map((item) => (
+            <a
+              key={item.slug}
+              className={`chip ${quality === item.slug ? "active" : ""}`}
+              href={buildQuery({ format: format?.slug, source, q, sort, quality: quality === item.slug ? undefined : item.slug })}
+            >
+              {item.label}
             </a>
           ))}
         </div>
@@ -131,6 +168,7 @@ export default async function ReleasesPage({
         <form className="search" action={appPath("/releases")} method="get">
           {format && <input type="hidden" name="format" value={format.slug} />}
           {source && <input type="hidden" name="source" value={source} />}
+          {quality && <input type="hidden" name="quality" value={quality} />}
           {sort !== "newest" && <input type="hidden" name="sort" value={sort} />}
           <input type="text" name="q" placeholder="Search releases..." defaultValue={q ?? ""} />
           <button type="submit">Search</button>
@@ -138,23 +176,26 @@ export default async function ReleasesPage({
 
         {hasFilter && (
           <div className="active-filters" aria-label="Active filters">
-            {format && <a href={buildQuery({ source, q, sort })}>{format.label}</a>}
-            {activeSource && <a href={buildQuery({ format: format?.slug, q, sort })}>{activeSource.name}</a>}
-            {q && <a href={buildQuery({ format: format?.slug, source, sort })}>“{q}”</a>}
+            {format && <a href={buildQuery({ source, quality, q, sort })}>{format.label}</a>}
+            {activeSource && <a href={buildQuery({ format: format?.slug, quality, q, sort })}>{activeSource.name}</a>}
+            {activeQuality && <a href={buildQuery({ format: format?.slug, source, q, sort })}>{activeQuality.label}</a>}
+            {q && <a href={buildQuery({ format: format?.slug, source, quality, sort })}>“{q}”</a>}
           </div>
         )}
 
         <div className="feed-head">
           <strong>Physical releases</strong>
-          <span className="count">{total} release{total === 1 ? "" : "s"}</span>
+          <span className="count">
+            {total} release{total === 1 ? "" : "s"} · page {page}/{totalPages}
+          </span>
         </div>
         <div className="sort-tabs" aria-label="Sort releases">
-          <a className={sort === "newest" ? "active" : ""} href={buildQuery({ format: format?.slug, source, q })}>
+          <a className={sort === "newest" ? "active" : ""} href={buildQuery({ format: format?.slug, source, quality, q })}>
             Newest
           </a>
           <a
             className={sort === "oldest" ? "active" : ""}
-            href={buildQuery({ format: format?.slug, source, q, sort: "oldest" })}
+            href={buildQuery({ format: format?.slug, source, quality, q, sort: "oldest" })}
           >
             Oldest
           </a>
@@ -168,6 +209,17 @@ export default async function ReleasesPage({
           </div>
         ) : (
           <ArticleFeed articles={feedArticles} />
+        )}
+        {totalPages > 1 && (
+          <nav className="pager" aria-label="Pagination">
+            <a className={page <= 1 ? "disabled" : ""} href={buildQuery({ format: format?.slug, source, quality, q, sort, page: page > 2 ? String(page - 1) : undefined })}>
+              Previous
+            </a>
+            <span>{page} / {totalPages}</span>
+            <a className={page >= totalPages ? "disabled" : ""} href={buildQuery({ format: format?.slug, source, quality, q, sort, page: page < totalPages ? String(page + 1) : String(totalPages) })}>
+              Next
+            </a>
+          </nav>
         )}
       </section>
     </div>

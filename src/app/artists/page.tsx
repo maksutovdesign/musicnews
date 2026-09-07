@@ -4,6 +4,7 @@ import { appPath } from "@/lib/paths";
 import type { Prisma } from "@prisma/client";
 
 const MIN_CONFIDENCE = 0.6;
+const PAGE_SIZE = 120;
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,7 @@ type SearchParams = Promise<{
   country?: string;
   genre?: string;
   q?: string;
+  page?: string;
 }>;
 
 function buildQuery(base: Record<string, string | undefined>) {
@@ -29,6 +31,7 @@ export default async function ArtistsPage({
   const country = sp.country?.toUpperCase();
   const genre = sp.genre;
   const q = sp.q?.trim();
+  const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
 
   const where: Prisma.ArtistWhereInput = {};
   const and: Prisma.ArtistWhereInput[] = [];
@@ -56,7 +59,8 @@ export default async function ArtistsPage({
     prisma.artist.findMany({
       where,
       orderBy: [{ sortName: "asc" }, { name: "asc" }],
-      take: 120,
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
       include: {
         artistGenres: {
           where: { confidence: { gte: MIN_CONFIDENCE } },
@@ -82,6 +86,7 @@ export default async function ArtistsPage({
     .sort();
   const activeGenre = genres.find((g) => g.slug === genre);
   const hasFilter = Boolean(country || genre || q);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div className="layout">
@@ -137,7 +142,9 @@ export default async function ArtistsPage({
 
         <div className="feed-head">
           <strong>Artist catalog</strong>
-          <span className="count">{total} artist{total === 1 ? "" : "s"}</span>
+          <span className="count">
+            {total} artist{total === 1 ? "" : "s"} · page {page}/{totalPages}
+          </span>
         </div>
 
         {artists.length === 0 ? (
@@ -152,13 +159,7 @@ export default async function ArtistsPage({
               <a
                 key={artist.id}
                 className="artist-card"
-                href={
-                  artist.mbid
-                    ? `https://musicbrainz.org/artist/${artist.mbid}`
-                    : `https://musicbrainz.org/search?query=${encodeURIComponent(artist.name)}&type=artist`
-                }
-                target="_blank"
-                rel="noopener noreferrer"
+                href={appPath(`/artists/${artist.id}`)}
               >
                 <h2>{artist.name}</h2>
                 <div className="meta">
@@ -177,6 +178,17 @@ export default async function ArtistsPage({
               </a>
             ))}
           </div>
+        )}
+        {totalPages > 1 && (
+          <nav className="pager" aria-label="Pagination">
+            <a className={page <= 1 ? "disabled" : ""} href={buildQuery({ country, genre, q, page: page > 2 ? String(page - 1) : undefined })}>
+              Previous
+            </a>
+            <span>{page} / {totalPages}</span>
+            <a className={page >= totalPages ? "disabled" : ""} href={buildQuery({ country, genre, q, page: page < totalPages ? String(page + 1) : String(totalPages) })}>
+              Next
+            </a>
+          </nav>
         )}
       </section>
     </div>

@@ -10,6 +10,7 @@ export interface SourceSeed {
   url: string;
   type?: "rss" | "discogs";
   category?: "news" | "release";
+  quality?: "editorial" | "google" | "marketplace" | "api";
   region?: string;
   language?: string;
   includeKeywords?: string[];
@@ -96,6 +97,7 @@ const GOOGLE_MUSIC_NEWS_SOURCES: SourceSeed[] = GOOGLE_NEWS_COUNTRIES.map((count
   url: googleNewsUrl(country),
   region: country.code,
   language: country.lang,
+  quality: "google",
   includeKeywords: MUSIC_NEWS_INCLUDE,
   excludeKeywords: MUSIC_NEWS_EXCLUDE,
 }));
@@ -116,6 +118,7 @@ const DISCOGS_COUNTRY_RELEASE_SOURCES: SourceSeed[] = DISCOGS_COUNTRY_RELEASES.f
       type: "discogs",
       url: `https://api.discogs.com/database/search?type=release&format=${encodeURIComponent(format)}&country=${encodeURIComponent(country)}&sort=year&sort_order=desc&per_page=25`,
       category: "release",
+      quality: "api",
       region: undefined,
       language: "en",
     })),
