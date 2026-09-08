@@ -22,13 +22,19 @@
 - Discogs-style `Artist - Release` titles now feed artist matching for better release links.
 - Added Postgres migration notes with required credentials and backup baseline.
 
+## Completed in v0.4
+
+- Review queue now supports selecting articles and publishing/blocking them in bulk.
+- Review queue now shows top waiting domains with publish/block actions for each domain.
+- Release feed now has artwork filters: with artwork and missing artwork.
+
 ## Highest Impact
 
-1. Hide releases without artwork behind an optional toggle.
+1. Connect production Postgres once credentials are available.
 
 2. Add Discogs artist links to internal artist pages.
 
-3. Add bulk review actions: publish all from domain, block selected, clear old review items.
+3. Add a clear/expire action for old review items.
 
 ## Data Quality
 

@@ -26,6 +26,7 @@ type SearchParams = Promise<{
   format?: string;
   source?: string;
   quality?: string;
+  artwork?: string;
   q?: string;
   sort?: string;
   page?: string;
@@ -47,6 +48,7 @@ export default async function ReleasesPage({
   const q = sp.q?.trim();
   const source = sp.source;
   const quality = SOURCE_QUALITIES.find((item) => item.slug === sp.quality)?.slug;
+  const artwork = sp.artwork === "missing" ? "missing" : sp.artwork === "with" ? "with" : undefined;
   const format = FORMATS.find((item) => item.slug === sp.format);
   const sort = sp.sort === "oldest" ? "oldest" : "newest";
   const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
@@ -55,6 +57,8 @@ export default async function ReleasesPage({
   and.push(publicArticleWhere());
   if (source) and.push({ sourceId: source });
   if (quality) and.push({ source: { quality } });
+  if (artwork === "with") and.push({ imageUrl: { not: null } });
+  if (artwork === "missing") and.push({ imageUrl: null });
   if (q) and.push({ OR: [{ title: { contains: q } }, { summary: { contains: q } }] });
   if (format) {
     and.push({
@@ -116,10 +120,11 @@ export default async function ReleasesPage({
     };
   });
 
-  const hasFilter = Boolean(format || source || quality || q);
+  const hasFilter = Boolean(format || source || quality || artwork || q);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const activeSource = sources.find((item) => item.id === source);
   const activeQuality = SOURCE_QUALITIES.find((item) => item.slug === quality);
+  const activeArtwork = artwork === "with" ? "With artwork" : artwork === "missing" ? "Missing artwork" : null;
 
   return (
     <div className="layout">
@@ -132,7 +137,7 @@ export default async function ReleasesPage({
             <a
               key={item.slug}
               className={`chip ${format?.slug === item.slug ? "active" : ""}`}
-              href={buildQuery({ source, quality, q, sort, format: format?.slug === item.slug ? undefined : item.slug })}
+              href={buildQuery({ source, quality, artwork, q, sort, format: format?.slug === item.slug ? undefined : item.slug })}
             >
               {item.label}
             </a>
@@ -145,7 +150,7 @@ export default async function ReleasesPage({
             <a
               key={item.id}
               className={`chip ${source === item.id ? "active" : ""}`}
-              href={buildQuery({ format: format?.slug, quality, q, sort, source: source === item.id ? undefined : item.id })}
+              href={buildQuery({ format: format?.slug, quality, artwork, q, sort, source: source === item.id ? undefined : item.id })}
             >
               {item.name}
             </a>
@@ -158,11 +163,27 @@ export default async function ReleasesPage({
             <a
               key={item.slug}
               className={`chip ${quality === item.slug ? "active" : ""}`}
-              href={buildQuery({ format: format?.slug, source, q, sort, quality: quality === item.slug ? undefined : item.slug })}
+              href={buildQuery({ format: format?.slug, source, artwork, q, sort, quality: quality === item.slug ? undefined : item.slug })}
             >
               {item.label}
             </a>
           ))}
+        </div>
+
+        <h3>Artwork</h3>
+        <div className="chips">
+          <a
+            className={`chip ${artwork === "with" ? "active" : ""}`}
+            href={buildQuery({ format: format?.slug, source, quality, q, sort, artwork: artwork === "with" ? undefined : "with" })}
+          >
+            With artwork
+          </a>
+          <a
+            className={`chip ${artwork === "missing" ? "active" : ""}`}
+            href={buildQuery({ format: format?.slug, source, quality, q, sort, artwork: artwork === "missing" ? undefined : "missing" })}
+          >
+            Missing artwork
+          </a>
         </div>
       </aside>
 
@@ -171,6 +192,7 @@ export default async function ReleasesPage({
           {format && <input type="hidden" name="format" value={format.slug} />}
           {source && <input type="hidden" name="source" value={source} />}
           {quality && <input type="hidden" name="quality" value={quality} />}
+          {artwork && <input type="hidden" name="artwork" value={artwork} />}
           {sort !== "newest" && <input type="hidden" name="sort" value={sort} />}
           <input type="text" name="q" placeholder="Search releases..." defaultValue={q ?? ""} />
           <button type="submit">Search</button>
@@ -178,10 +200,11 @@ export default async function ReleasesPage({
 
         {hasFilter && (
           <div className="active-filters" aria-label="Active filters">
-            {format && <a href={buildQuery({ source, quality, q, sort })}>{format.label}</a>}
-            {activeSource && <a href={buildQuery({ format: format?.slug, quality, q, sort })}>{activeSource.name}</a>}
-            {activeQuality && <a href={buildQuery({ format: format?.slug, source, q, sort })}>{activeQuality.label}</a>}
-            {q && <a href={buildQuery({ format: format?.slug, source, quality, sort })}>“{q}”</a>}
+            {format && <a href={buildQuery({ source, quality, artwork, q, sort })}>{format.label}</a>}
+            {activeSource && <a href={buildQuery({ format: format?.slug, quality, artwork, q, sort })}>{activeSource.name}</a>}
+            {activeQuality && <a href={buildQuery({ format: format?.slug, source, artwork, q, sort })}>{activeQuality.label}</a>}
+            {activeArtwork && <a href={buildQuery({ format: format?.slug, source, quality, q, sort })}>{activeArtwork}</a>}
+            {q && <a href={buildQuery({ format: format?.slug, source, quality, artwork, sort })}>“{q}”</a>}
           </div>
         )}
 
@@ -192,12 +215,12 @@ export default async function ReleasesPage({
           </span>
         </div>
         <div className="sort-tabs" aria-label="Sort releases">
-          <a className={sort === "newest" ? "active" : ""} href={buildQuery({ format: format?.slug, source, quality, q })}>
+          <a className={sort === "newest" ? "active" : ""} href={buildQuery({ format: format?.slug, source, quality, artwork, q })}>
             Newest
           </a>
           <a
             className={sort === "oldest" ? "active" : ""}
-            href={buildQuery({ format: format?.slug, source, quality, q, sort: "oldest" })}
+            href={buildQuery({ format: format?.slug, source, quality, artwork, q, sort: "oldest" })}
           >
             Oldest
           </a>
@@ -214,11 +237,11 @@ export default async function ReleasesPage({
         )}
         {totalPages > 1 && (
           <nav className="pager" aria-label="Pagination">
-            <a className={page <= 1 ? "disabled" : ""} href={buildQuery({ format: format?.slug, source, quality, q, sort, page: page > 2 ? String(page - 1) : undefined })}>
+            <a className={page <= 1 ? "disabled" : ""} href={buildQuery({ format: format?.slug, source, quality, artwork, q, sort, page: page > 2 ? String(page - 1) : undefined })}>
               Previous
             </a>
             <span>{page} / {totalPages}</span>
-            <a className={page >= totalPages ? "disabled" : ""} href={buildQuery({ format: format?.slug, source, quality, q, sort, page: page < totalPages ? String(page + 1) : String(totalPages) })}>
+            <a className={page >= totalPages ? "disabled" : ""} href={buildQuery({ format: format?.slug, source, quality, artwork, q, sort, page: page < totalPages ? String(page + 1) : String(totalPages) })}>
               Next
             </a>
           </nav>

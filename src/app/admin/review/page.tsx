@@ -10,27 +10,34 @@ function stringField(formData: FormData, name: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-async function publishArticle(formData: FormData) {
-  "use server";
-  const id = stringField(formData, "id");
-  if (!id) return;
-  await prisma.article.update({
-    where: { id },
-    data: { moderationStatus: "published", moderationReason: null },
-  });
-  revalidatePath("/admin/review");
-  revalidatePath("/");
+function idsFromForm(formData: FormData, singleId: string) {
+  if (singleId) return [singleId];
+  return formData
+    .getAll("ids")
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter(Boolean);
 }
 
-async function blockArticle(formData: FormData) {
+async function moderateArticles(formData: FormData) {
   "use server";
-  const id = stringField(formData, "id");
-  const reason = stringField(formData, "reason") || "Blocked in review queue";
-  if (!id) return;
-  await prisma.article.update({
-    where: { id },
-    data: { moderationStatus: "blocked", moderationReason: reason },
-  });
+  const [action, singleId = ""] = stringField(formData, "command").split(":");
+  const ids = idsFromForm(formData, singleId);
+  if (!ids.length) return;
+  if (action === "publish") {
+    await prisma.article.updateMany({
+      where: { id: { in: ids } },
+      data: { moderationStatus: "published", moderationReason: null },
+    });
+  }
+  if (action === "block") {
+    await prisma.article.updateMany({
+      where: { id: { in: ids } },
+      data: {
+        moderationStatus: "blocked",
+        moderationReason: "Blocked in review queue",
+      },
+    });
+  }
   revalidatePath("/admin/review");
   revalidatePath("/");
 }
@@ -45,6 +52,18 @@ async function blockDomain(formData: FormData) {
     update: { reason: "Blocked from review queue" },
   });
   await blockExistingArticles(rule);
+  revalidatePath("/admin/review");
+  revalidatePath("/");
+}
+
+async function publishDomain(formData: FormData) {
+  "use server";
+  const domain = stringField(formData, "domain").toLowerCase();
+  if (!domain) return;
+  await prisma.article.updateMany({
+    where: { moderationStatus: "review", sourceDomain: domain },
+    data: { moderationStatus: "published", moderationReason: null },
+  });
   revalidatePath("/admin/review");
   revalidatePath("/");
 }
@@ -64,7 +83,7 @@ async function blockKeyword(formData: FormData) {
 }
 
 export default async function ReviewPage() {
-  const [articles, rules, counts] = await Promise.all([
+  const [articles, rules, counts, domains] = await Promise.all([
     prisma.article.findMany({
       where: { moderationStatus: "review" },
       orderBy: { publishedAt: "desc" },
@@ -75,6 +94,13 @@ export default async function ReviewPage() {
     prisma.article.groupBy({
       by: ["moderationStatus"],
       _count: { _all: true },
+    }),
+    prisma.article.groupBy({
+      by: ["sourceDomain"],
+      where: { moderationStatus: "review", sourceDomain: { not: null } },
+      _count: { _all: true },
+      orderBy: { _count: { sourceDomain: "desc" } },
+      take: 12,
     }),
   ]);
 
@@ -114,54 +140,79 @@ export default async function ReviewPage() {
         </div>
       )}
 
-      <div className="review-list">
+      {domains.length > 0 && (
+        <div className="domain-actions">
+          {domains.map((item) => (
+            <div key={item.sourceDomain} className="domain-action">
+              <strong>{item.sourceDomain}</strong>
+              <span>{item._count._all} waiting</span>
+              <form action={publishDomain}>
+                <input type="hidden" name="domain" value={item.sourceDomain ?? ""} />
+                <button type="submit">Publish domain</button>
+              </form>
+              <form action={blockDomain}>
+                <input type="hidden" name="domain" value={item.sourceDomain ?? ""} />
+                <button type="submit">Block domain</button>
+              </form>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <form className="review-list" action={moderateArticles}>
         {articles.length === 0 ? (
           <div className="empty">No articles waiting for review.</div>
         ) : (
-          articles.map((article) => {
-            const domain = article.sourceDomain ?? domainFromUrl(article.url);
-            return (
-              <article key={article.id} className="review-item">
-                {article.imageUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={article.imageUrl} alt="" loading="lazy" />
-                )}
-                <div className="review-body">
-                  <div className="meta">
-                    <span className="tag">{article.source.name}</span>
-                    {domain && <span className="tag">{domain}</span>}
-                    <time dateTime={article.publishedAt.toISOString()}>
-                      {article.publishedAt.toLocaleDateString("ru")}
-                    </time>
+          <>
+            <div className="bulk-actions">
+              <button type="submit" name="command" value="publish">Publish selected</button>
+              <button type="submit" name="command" value="block">Block selected</button>
+            </div>
+            {articles.map((article) => {
+              const domain = article.sourceDomain ?? domainFromUrl(article.url);
+              return (
+                <article key={article.id} className="review-item">
+                  <label className="review-check">
+                    <input type="checkbox" name="ids" value={article.id} />
+                    <span>Select</span>
+                  </label>
+                  {article.imageUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={article.imageUrl} alt="" loading="lazy" />
+                  )}
+                  <div className="review-body">
+                    <div className="meta">
+                      <span className="tag">{article.source.name}</span>
+                      {domain && <span className="tag">{domain}</span>}
+                      <time dateTime={article.publishedAt.toISOString()}>
+                        {article.publishedAt.toLocaleDateString("ru")}
+                      </time>
+                    </div>
+                    <h2>{article.title}</h2>
+                    {article.summary && <p>{article.summary}</p>}
+                    <a className="reset" href={article.url} target="_blank" rel="noopener noreferrer">
+                      Open source
+                    </a>
+                    <div className="review-actions">
+                      <button type="submit" name="command" value={`publish:${article.id}`} formAction={moderateArticles}>
+                        Publish
+                      </button>
+                      <button type="submit" name="command" value={`block:${article.id}`} formAction={moderateArticles}>
+                        Block
+                      </button>
+                      {domain && (
+                        <button type="submit" name="domain" value={domain} formAction={blockDomain}>
+                          Block domain
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <h2>{article.title}</h2>
-                  {article.summary && <p>{article.summary}</p>}
-                  <a className="reset" href={article.url} target="_blank" rel="noopener noreferrer">
-                    Open source
-                  </a>
-                  <div className="review-actions">
-                    <form action={publishArticle}>
-                      <input type="hidden" name="id" value={article.id} />
-                      <button type="submit">Publish</button>
-                    </form>
-                    <form action={blockArticle}>
-                      <input type="hidden" name="id" value={article.id} />
-                      <input type="hidden" name="reason" value="Blocked in review queue" />
-                      <button type="submit">Block</button>
-                    </form>
-                    {domain && (
-                      <form action={blockDomain}>
-                        <input type="hidden" name="domain" value={domain} />
-                        <button type="submit">Block domain</button>
-                      </form>
-                    )}
-                  </div>
-                </div>
-              </article>
-            );
-          })
+                </article>
+              );
+            })}
+          </>
         )}
-      </div>
+      </form>
     </div>
   );
 }
