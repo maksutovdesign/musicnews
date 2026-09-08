@@ -28,6 +28,14 @@
 - Review queue now shows top waiting domains with publish/block actions for each domain.
 - Release feed now has artwork filters: with artwork and missing artwork.
 
+## Completed in v0.5
+
+- Added a daily Beget backup wrapper for the SQLite production database.
+- Backup script now writes `backups/latest.json` with status, timestamp, database path, archive path, and size.
+- Added `/admin/backups` for backup status and archive inventory.
+- Deploy script excludes `backups/` so production backups are never overwritten by local archives.
+- Cron example now includes the daily backup command.
+
 ## Highest Impact
 
 1. Connect production Postgres once credentials are available.

@@ -1,1 +1,2 @@
 */15 * * * * /bin/bash /home/m/maksutic/maksutovdesign.ru/musicnews/scripts/cron-ingest.sh >> /home/m/maksutic/maksutovdesign.ru/musicnews/ingest.log 2>&1
+17 3 * * * /bin/bash /home/m/maksutic/maksutovdesign.ru/musicnews/scripts/cron-backup.sh >> /home/m/maksutic/maksutovdesign.ru/musicnews/backup.log 2>&1

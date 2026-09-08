@@ -10,6 +10,8 @@ tar \
   --exclude="./node_modules" \
   --exclude="./.next" \
   --exclude="./.claude" \
+  --exclude="./backups/*.db.gz" \
+  --exclude="./backups/latest.json" \
   --exclude="./.DS_Store" \
   --exclude="./.env" \
   --exclude="./.env.local" \

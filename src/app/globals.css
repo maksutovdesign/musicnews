@@ -441,6 +441,32 @@ time { white-space: nowrap; }
 }
 .source-row small { color: var(--muted); }
 .source-error { color: #ff8f8f; }
+.backup-row {
+  grid-template-columns: minmax(260px, 1.7fr) minmax(160px, .8fr) minmax(90px, .4fr);
+}
+.backup-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.backup-panel h2 {
+  margin: 0;
+  font-size: 16px;
+}
+.backup-panel code {
+  display: block;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--muted);
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
 
 .review-list {
   display: flex;

@@ -1,6 +1,6 @@
 {
   "name": "music-news",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "description": "Global music news aggregator — sorted by country, genre and source",
   "scripts": {
