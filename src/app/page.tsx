@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { countryName, flag, isRealCountryCode } from "@/lib/countries";
 import { appPath } from "@/lib/paths";
 import { ArticleFeed, type FeedArticle } from "./article-feed";
+import { publicArticleWhere } from "@/lib/moderation";
 import type { Prisma } from "@prisma/client";
 
 // Minimum confidence for a genre/country match to count. Keeps low-quality
@@ -71,6 +72,7 @@ export default async function Home({
   if (quality) and.push({ source: { quality } });
   if (q) and.push({ title: { contains: q } });
   and.push({ source: { category: "news" } });
+  and.push(publicArticleWhere());
   if (and.length) where.AND = and;
 
   // Fetch articles + facets in parallel.

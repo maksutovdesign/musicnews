@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { appPath } from "@/lib/paths";
 import { countryName, flag, isRealCountryCode } from "@/lib/countries";
 import { ArticleFeed, type FeedArticle } from "../article-feed";
+import { publicArticleWhere } from "@/lib/moderation";
 import type { Prisma } from "@prisma/client";
 
 const MIN_CONFIDENCE = 0.6;
@@ -51,6 +52,7 @@ export default async function ReleasesPage({
   const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
 
   const and: Prisma.ArticleWhereInput[] = [{ source: { category: "release" } }];
+  and.push(publicArticleWhere());
   if (source) and.push({ sourceId: source });
   if (quality) and.push({ source: { quality } });
   if (q) and.push({ OR: [{ title: { contains: q } }, { summary: { contains: q } }] });

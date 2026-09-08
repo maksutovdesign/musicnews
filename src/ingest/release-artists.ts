@@ -10,5 +10,14 @@ export function releaseArtistTitle(...texts: (string | null | undefined)[]) {
     if (names?.length) return names.join(", ");
   }
 
+  for (const text of texts) {
+    if (!text) continue;
+    const match = text.match(/^(.+?)\s+-\s+(.+)$/);
+    const artist = match?.[1]?.trim();
+    if (artist && !/^various( artists)?$/i.test(artist) && !/^unknown artist$/i.test(artist)) {
+      return artist;
+    }
+  }
+
   return "";
 }

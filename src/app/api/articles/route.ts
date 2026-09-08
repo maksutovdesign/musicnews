@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { publicArticleWhere } from "@/lib/moderation";
 import type { Prisma } from "@prisma/client";
 
 const MIN_CONFIDENCE = 0.6;
@@ -34,6 +35,7 @@ export async function GET(req: NextRequest) {
     and.push({ genres: { some: { confidence: { gte: MIN_CONFIDENCE }, genre: { slug: genre } } } });
   if (source) and.push({ sourceId: source });
   if (q) and.push({ title: { contains: q } });
+  and.push(publicArticleWhere());
 
   const articles = await prisma.article.findMany({
     where: and.length ? { AND: and } : {},

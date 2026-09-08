@@ -11,16 +11,24 @@
 - `/admin/sources` shows source status, quality, errors, and item counts.
 - SQLite backup script added for Beget while Postgres migration remains pending.
 
+## Completed in v0.3
+
+- Added `/admin/review` for Google News review queue.
+- Added article moderation statuses: published, review, blocked.
+- Added domain/keyword block rules that apply to existing and future articles.
+- Added source-domain backfill for old articles.
+- Existing Google News items can now be moved into the review workflow.
+- Discogs releases now keep external provider/id for future precise Discogs linking.
+- Discogs-style `Artist - Release` titles now feed artist matching for better release links.
+- Added Postgres migration notes with required credentials and backup baseline.
+
 ## Highest Impact
 
-1. Add a review queue for noisy Google News items.
-   - Mark false positives.
-   - Store blocked domains/keywords.
-   - Improve filters over time without deleting good sources.
+1. Hide releases without artwork behind an optional toggle.
 
-2. Hide releases without artwork behind an optional toggle.
+2. Add Discogs artist links to internal artist pages.
 
-3. Add Discogs artist links to internal artist pages.
+3. Add bulk review actions: publish all from domain, block selected, clear old review items.
 
 ## Data Quality
 

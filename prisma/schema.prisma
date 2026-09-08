@@ -46,8 +46,11 @@ model Article {
   content     String?
   imageUrl    String?
   language    String? // ISO 639-1 detected/declared language of the article
+  sourceDomain String?
   publishedAt DateTime
   fetchedAt   DateTime @default(now())
+  moderationStatus String @default("published") // "published" | "review" | "blocked"
+  moderationReason String?
 
   // Physical release metadata, filled when a release feed/API provides it.
   releaseFormat        String?
@@ -55,6 +58,8 @@ model Article {
   releaseLabel         String?
   releaseCatalogNumber String?
   releaseYear          Int?
+  externalProvider     String?
+  externalId           String?
 
   // Deduplication key: hash of normalized title + normalized url.
   dedupeKey String @unique
@@ -66,9 +71,23 @@ model Article {
   genres  ArticleGenre[]
 
   @@index([publishedAt])
+  @@index([sourceDomain])
+  @@index([moderationStatus])
   @@index([releaseFormat])
   @@index([releaseCountry])
   @@index([releaseYear])
+  @@index([externalProvider, externalId])
+}
+
+model BlockRule {
+  id        String   @id @default(cuid())
+  type      String // "domain" | "keyword"
+  value     String
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@unique([type, value])
+  @@index([type])
 }
 
 // A musician or band, resolved against MusicBrainz where possible.

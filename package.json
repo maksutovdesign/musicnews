@@ -1,6 +1,6 @@
 {
   "name": "music-news",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Global music news aggregator — sorted by country, genre and source",
   "scripts": {
@@ -15,6 +15,7 @@
     "import:catalog": "tsx src/ingest/import-catalog.ts",
     "ingest": "tsx src/ingest/run.ts",
     "ingest:watch": "tsx src/ingest/watch.ts",
+    "moderation:backfill": "tsx src/ingest/backfill-moderation.ts",
     "cleanup": "tsx src/ingest/cleanup.ts",
     "prune": "tsx src/ingest/prune.ts",
     "reclassify": "tsx src/ingest/reclassify.ts",

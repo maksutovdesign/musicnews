@@ -5,6 +5,7 @@ import { fetchDiscogsReleaseResult } from "./discogs";
 import { classifyArticle } from "./classify";
 import { releaseArtistTitle } from "./release-artists";
 import { fetchPageImage } from "./page-image";
+import { blockRules, domainFromUrl, matchesBlockRules } from "@/lib/moderation";
 import { fileURLToPath } from "node:url";
 
 /**
@@ -57,6 +58,7 @@ export async function runIngest() {
     where: { enabled: true, type: { in: ["rss", "discogs"] } },
   });
   let stored = 0;
+  const rules = await blockRules();
   const toClassify: {
     id: string;
     title: string;
@@ -94,6 +96,8 @@ export async function runIngest() {
     const items = result.items;
     for (const item of items) {
       if (!shouldKeepItem(item, config)) continue;
+      const blockedRule = matchesBlockRules(item, rules);
+      if (blockedRule) continue;
       const release = source.category === "release" ? releaseMetadata(item) : null;
       const imageUrl =
         item.imageUrl ??
@@ -131,7 +135,9 @@ export async function runIngest() {
           content: item.content,
           imageUrl,
           language: source.language,
+          sourceDomain: domainFromUrl(item.url),
           publishedAt: item.publishedAt,
+          moderationStatus: source.quality === "google" ? "review" : "published",
           dedupeKey: item.dedupeKey,
           sourceId: source.id,
           releaseFormat: release?.format,
@@ -139,6 +145,8 @@ export async function runIngest() {
           releaseLabel: release?.label,
           releaseCatalogNumber: release?.catalogNumber,
           releaseYear: release?.year,
+          externalProvider: item.externalProvider,
+          externalId: item.externalId,
         },
       });
       stored++;

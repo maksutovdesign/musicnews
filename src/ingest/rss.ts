@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 
 const parser = new Parser({
   timeout: 15000,
-  headers: { "User-Agent": "MusicNews/0.1 (+https://example.com)" },
+  headers: { "User-Agent": "MusicNews/0.3 (+https://maksutovdesign.ru/musicnews)" },
   customFields: {
     item: [
       ["image", "image"],
@@ -27,6 +27,8 @@ export interface ParsedItem {
   releaseLabel?: string | null;
   releaseCatalogNumber?: string | null;
   releaseYear?: number | null;
+  externalProvider?: string | null;
+  externalId?: string | null;
 }
 
 export interface FetchResult {

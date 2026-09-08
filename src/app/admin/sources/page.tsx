@@ -42,6 +42,7 @@ export default async function SourcesAdminPage() {
   return (
     <div className="admin-page">
       <a className="reset" href={appPath("/")}>← back to news</a>
+      <a className="reset" href={appPath("/admin/review")}>review queue →</a>
       <div className="feed-head">
         <strong>Source admin</strong>
         <span className="count">{sources.length} sources</span>

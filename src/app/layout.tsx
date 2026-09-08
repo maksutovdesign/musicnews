@@ -27,6 +27,7 @@ export default function RootLayout({
               <a href={appPath("/releases")}>Releases</a>
               <a href={appPath("/artists")}>Artists</a>
               <a href={appPath("/admin/sources")}>Sources</a>
+              <a href={appPath("/admin/review")}>Review</a>
             </nav>
             <div className="tagline">global music news · by country &amp; genre</div>
           </div>

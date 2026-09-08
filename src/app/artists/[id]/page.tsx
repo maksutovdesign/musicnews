@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { appPath } from "@/lib/paths";
 import { countryName, flag, isRealCountryCode } from "@/lib/countries";
+import { publicArticleWhere } from "@/lib/moderation";
 import { ArticleFeed, type FeedArticle } from "../../article-feed";
 
 const MIN_CONFIDENCE = 0.6;
@@ -52,6 +53,7 @@ async function loadArtist(id: string) {
         orderBy: { genre: { name: "asc" } },
       },
       articles: {
+        where: { article: publicArticleWhere() },
         orderBy: { article: { publishedAt: "desc" } },
         take: 80,
         include: {

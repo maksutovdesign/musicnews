@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type { FetchResult, ParsedItem } from "./rss";
 
 interface DiscogsSearchResult {
+  id?: number;
   title?: string;
   uri?: string;
   resource_url?: string;
@@ -89,7 +90,7 @@ export async function fetchDiscogsReleaseResult(url: string): Promise<FetchResul
   try {
     res = await fetch(url, {
       headers: {
-        "User-Agent": "MusicNews/0.1 (+https://maksutovdesign.ru/musicnews)",
+        "User-Agent": "MusicNews/0.3 (+https://maksutovdesign.ru/musicnews)",
         Authorization: `Discogs token=${token}`,
         Accept: "application/json",
       },
@@ -126,6 +127,8 @@ export async function fetchDiscogsReleaseResult(url: string): Promise<FetchResul
         releaseLabel: result.label?.[0] ?? null,
         releaseCatalogNumber: result.catno ?? null,
         releaseYear: releaseYear(result),
+        externalProvider: "discogs",
+        externalId: result.id ? String(result.id) : null,
       } satisfies ParsedItem;
     })
     .filter((item): item is ParsedItem => Boolean(item));
